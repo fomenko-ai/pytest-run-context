@@ -2,15 +2,23 @@
 
 Each directory is a self-contained pytest project showing how to configure one
 of the storage implementations bundled with `pytest-run-context`. Run commands
-from the repository root. Use a new `--run-id` when repeating a persistent
-example because existing run IDs are rejected instead of overwritten.
+from the repository root. Ordinary standalone runs do not pass `--run-id`;
+pytest creates a generated ID. Passing `--run-id` always means loading an
+existing run rather than choosing an ID for a new run.
 
 All examples demonstrate the same lifecycle:
 
 1. pytest loads the plugin automatically through its `pytest11` entry point;
 2. the example's `conftest.py` supplies a custom Pydantic model and storage;
 3. the test updates the shared context and explicitly saves a snapshot;
-4. the plugin saves the final state when the pytest session finishes.
+4. the plugin finishes contexts that pytest created itself.
+
+Two workflow-focused examples are also available:
+
+- [`standalone/`](standalone/README.md) shows pytest creating and finishing an
+  in-memory context;
+- [`external_preparation/`](external_preparation/README.md) shows preparation,
+  pytest, and cleanup sharing a persistent SQLite context across processes.
 
 ## Environment configuration
 
@@ -45,8 +53,7 @@ JSON storage creates one JSON file per run. By default, the example writes to
 
 ```bash
 PYTEST_RUN_CONTEXT_JSON_DIRECTORY=/tmp/my-run-context-json \
-uv run --group examples pytest --strict-markers examples/json_storage \
-  --run-id json-demo
+uv run --group examples pytest --strict-markers examples/json_storage
 ```
 
 The filename is a SHA-256 hash of the run ID. The JSON document contains the
@@ -59,8 +66,7 @@ default. Override the database path with `PYTEST_RUN_CONTEXT_SQLITE_PATH`:
 
 ```bash
 PYTEST_RUN_CONTEXT_SQLITE_PATH=/tmp/my-run-context.sqlite3 \
-uv run --group examples pytest --strict-markers examples/sqlite_storage \
-  --run-id sqlite-demo
+uv run --group examples pytest --strict-markers examples/sqlite_storage
 ```
 
 ## Redis storage
@@ -70,8 +76,7 @@ does not create or manage a Redis server:
 
 ```bash
 uv sync --locked --group examples --extra redis
-uv run --group examples --extra redis pytest --strict-markers examples/redis_storage \
-  --run-id redis-demo
+uv run --group examples --extra redis pytest --strict-markers examples/redis_storage
 ```
 
 Redis connection settings are split across

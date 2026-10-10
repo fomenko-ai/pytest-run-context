@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from uuid import uuid4
 
 import pytest
 
 from .context import RunContext
-from .models import BaseCustomContext, RunInfo
+from .errors import InvalidStoredRunError, RunAlreadyFinishedError, RunNotFoundError
+from .models import BaseCustomContext
 from .registry import _activate, _deactivate, get_run_context
 from .storage import MemoryStorage, Storage
 
@@ -19,6 +18,7 @@ class PluginSettings:
 _settings_key = pytest.StashKey[PluginSettings]()
 _context_key = pytest.StashKey[RunContext]()
 _token_key = pytest.StashKey[object]()
+_owns_lifecycle_key = pytest.StashKey[bool]()
 
 
 def configure(
@@ -48,17 +48,33 @@ def pytest_sessionstart(session):
     settings = config.stash.get(_settings_key, None)
     if settings is None:
         settings = PluginSettings(BaseCustomContext, MemoryStorage())
-    info = RunInfo(
-        run_id=config.getoption("--run-id") or str(uuid4()),
-        started_at=datetime.now(timezone.utc),
-    )
-    custom = settings.context_model()
-    context = RunContext(info, custom, settings.storage)
-    custom.on_run_start(info)
-    settings.storage.create_run(
-        info.run_id, info.model_dump_json(), custom.model_dump_json()
-    )
+    requested_run_id = config.getoption("--run-id")
+    try:
+        if requested_run_id is None:
+            context = RunContext.create(
+                context_model=settings.context_model,
+                storage=settings.storage,
+            )
+            owns_lifecycle = True
+        else:
+            context = RunContext.load(
+                run_id=requested_run_id,
+                context_model=settings.context_model,
+                storage=settings.storage,
+            )
+            if context.info.finished_at is not None:
+                raise RunAlreadyFinishedError(
+                    f"RunContext {requested_run_id!r} is already finished"
+                )
+            owns_lifecycle = False
+    except (InvalidStoredRunError, RunNotFoundError, RunAlreadyFinishedError) as exc:
+        settings.storage.close()
+        raise pytest.UsageError(str(exc)) from exc
+    except BaseException:
+        settings.storage.close()
+        raise
     config.stash[_context_key] = context
+    config.stash[_owns_lifecycle_key] = owns_lifecycle
     config.stash[_token_key] = _activate(context)
 
 
@@ -73,11 +89,11 @@ def pytest_sessionfinish(session, exitstatus):
         return
     context = config.stash[_context_key]
     try:
-        final_info = RunInfo.model_validate(
-            {**context.info.model_dump(), "finished_at": datetime.now(timezone.utc)}
-        )
         try:
-            context._finish(final_info)
+            if config.stash[_owns_lifecycle_key]:
+                context.finish()
+            else:
+                context.save()
         except Exception as exc:
             session.exitstatus = pytest.ExitCode.INTERNAL_ERROR
             raise pytest.UsageError(

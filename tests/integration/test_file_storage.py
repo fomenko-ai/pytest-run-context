@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+import textwrap
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
 
+from pytest_run_context import BaseCustomContext, RunContext
 from pytest_run_context.storage import (
     JSONStorage,
     RunAlreadyExistsError,
@@ -16,6 +20,11 @@ from pytest_run_context.storage import (
 pytestmark = pytest.mark.integration
 
 StorageFactory = Callable[[Path], Storage]
+
+
+class CrossProcessContext(BaseCustomContext):
+    environment: str = "unprepared"
+    observed_by_pytest: bool = False
 
 
 @pytest.fixture(params=["sqlite", "json"])
@@ -92,3 +101,83 @@ def test_sqlite_storage_persists_across_instances(tmp_path: Path) -> None:
         assert second.load_run("r1") == StoredRun("info", "custom")
     finally:
         second.close()
+
+
+def test_sqlite_context_created_outside_pytest_is_loaded_in_subprocess(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "runs.db"
+    storage = SQLiteStorage(database)
+    context = RunContext.create(
+        context_model=CrossProcessContext,
+        storage=storage,
+        run_id="prepared-run",
+    )
+    context.custom.environment = "prepared"
+    context.save()
+    storage.close()
+
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "conftest.py").write_text(
+        textwrap.dedent(
+            f"""
+            from pytest_run_context import BaseCustomContext, configure
+            from pytest_run_context.storage import SQLiteStorage
+
+            class ProjectContext(BaseCustomContext):
+                environment: str = "unprepared"
+                observed_by_pytest: bool = False
+
+            def pytest_configure(config):
+                configure(
+                    config,
+                    context_model=ProjectContext,
+                    storage=SQLiteStorage({str(database)!r}),
+                )
+            """
+        ),
+        encoding="utf-8",
+    )
+    (project / "test_prepared.py").write_text(
+        textwrap.dedent(
+            """
+            from pytest_run_context import get_run_context
+
+            def test_prepared_context(run_context):
+                assert run_context is get_run_context()
+                assert run_context.custom.environment == "prepared"
+                run_context.custom.observed_by_pytest = True
+                run_context.save()
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--strict-markers",
+            "--run-id=prepared-run",
+            str(project),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    verification_storage = SQLiteStorage(database)
+    try:
+        restored = RunContext.load(
+            run_id="prepared-run",
+            context_model=CrossProcessContext,
+            storage=verification_storage,
+        )
+        assert restored.custom.environment == "prepared"
+        assert restored.custom.observed_by_pytest is True
+        assert restored.info.finished_at is None
+    finally:
+        verification_storage.close()

@@ -44,14 +44,109 @@ def test_context(run_context):
     run_context.save()
 ```
 
-`--run-id` can override the generated UUID; existing IDs cannot be reused.
+Without `--run-id`, pytest creates a context with a generated UUID and owns its
+lifecycle. Creation calls `on_run_start()`, persists the initial state, and
+pytest calls `finish()` when its session ends. `finish()` calls
+`on_run_finish()`, sets `finished_at`, and persists both objects.
+
+Passing `--run-id` means loading an existing active context; it never chooses
+an ID for a new context. Pytest preserves fields prepared by another process,
+saves the context when its session ends, and leaves it unfinished for its
+external lifecycle owner. An unknown or already finished ID causes a usage
+error before tests execute. A consuming project can require `--run-id` in its
+own hook:
+
+```python
+import pytest
+
+
+def pytest_configure(config):
+    if not config.getoption("--run-id"):
+        raise pytest.UsageError("Missing --run-id. Run environment preparation first.")
+    configure(config, context_model=ProjectContext, storage=SQLiteStorage("runs.db"))
+```
+
+## Creating and loading outside pytest
+
+An external script can prepare a persistent context without a pytest
+`Config`:
+
+```python
+from pytest_run_context import RunContext
+from pytest_run_context.storage import SQLiteStorage
+
+storage = SQLiteStorage("runs.db")
+try:
+    context = RunContext.create(
+        context_model=ProjectContext,
+        storage=storage,
+    )
+    context.custom.environment = "prepared"
+    context.save()
+    print(context.info.run_id)
+finally:
+    storage.close()
+```
+
+The subsequent pytest process configures the same backend and runs with the
+printed ID:
+
+```bash
+pytest --run-id=<generated-run-id>
+```
+
+After pytest and environment cleanup, the creating workflow reloads and
+finishes the context:
+
+```python
+storage = SQLiteStorage("runs.db")
+try:
+    context = RunContext.load(
+        run_id=run_id,
+        context_model=ProjectContext,
+        storage=storage,
+    )
+    context.finish()
+finally:
+    storage.close()
+```
+
+`create()` accepts an optional explicit `run_id`; storage atomically rejects a
+duplicate with `RunAlreadyExistsError`. `load()` never creates or overwrites a
+run. It raises `RunNotFoundError` for a missing run and
+`InvalidStoredRunError` for invalid persisted data. Loading a finished run is
+allowed for inspection, but calling `finish()` again raises
+`RunAlreadyFinishedError`.
+
+`save()` writes the current snapshot without invoking lifecycle hooks.
+`on_run_start()` runs only during creation. Loading, including pytest loading
+through `--run-id`, does not run it again. The owner that created the logical
+run is responsible for calling `finish()`: pytest owns contexts it creates,
+while an external preparation workflow owns contexts pytest loads.
+
+SQLite, JSON, and Redis can share a context between processes when every
+process uses the same backend configuration. Independent `MemoryStorage`
+instances cannot. SQLite and JSON data never expire automatically; Redis TTL
+is configurable and renewed on every write. JSON storage is intended for
+sequential, single-process access. Storage passed to standalone APIs remains
+owned by the caller and must be closed by it.
+
+Completion cannot be transactional across a user hook and arbitrary storage.
+Failure behavior and concurrency limitations are recorded in
+[`0001-run-context-finish-failure-semantics.md`](docs/decisions/0001-run-context-finish-failure-semantics.md).
+
 Without `configure()`, the plugin uses in-memory storage and the base custom
-context. Custom data is saved explicitly, plus automatic writes at session
-start and finish. The plugin does not collect test results. SQLite and JSON
-data never expire automatically; Redis TTL is configurable and renewed on
-every write. JSON storage is intended for sequential, single-process usage.
-`get_run_context()` uses `ContextVar`; new threads do not inherit it
+context. The plugin does not collect test results or save after individual
+tests. `get_run_context()` uses `ContextVar`; new threads do not inherit it
 automatically.
+
+## Examples
+
+Runnable projects for standalone pytest, external preparation, Memory, JSON,
+SQLite, and Redis storage are in [`examples/`](examples/README.md). The
+external example demonstrates the full prepare → pytest → cleanup lifecycle.
+Configurable backend examples use the `PYTEST_RUN_CONTEXT_*` variables listed
+in [`.env.example`](.env.example).
 
 ## Development with uv
 
@@ -120,13 +215,6 @@ uv add --editable /path/to/pytest-run-context
 ```
 
 `uv.lock` pins dependency versions when they can be resolved through the package index. After changing dependencies, run `uv lock` and commit the file. Once installed, the plugin is loaded automatically through the `pytest11` entry point.
-
-## Examples
-
-Runnable pytest projects for Memory, JSON, SQLite, and Redis storage are in
-[`examples/`](examples/README.md). Each backend has an independent `conftest.py`
-and test module, together with its setup and run command. Configurable examples
-use the `PYTEST_RUN_CONTEXT_*` variables listed in [`.env.example`](.env.example).
 
 ## Compatibility
 
