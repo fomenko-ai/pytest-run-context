@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytest-run-context"
+version = "0.1.0"
+description = "Share and persist a typed run context across a pytest session."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["pytest>=7.0.0", "pydantic>=2"]
+authors = [
+  { name = "Aleksei Fomenko", email = "fomenko_ai@proton.me" },
+]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["context", "pydantic", "pytest", "storage", "testing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+redis = ["redis>=5"]
+
+[project.urls]
+Homepage = "https://github.com/fomenko-ai/pytest-run-context"
+Repository = "https://github.com/fomenko-ai/pytest-run-context"
+Issues = "https://github.com/fomenko-ai/pytest-run-context/issues"
+Changelog = "https://github.com/fomenko-ai/pytest-run-context/blob/main/CHANGELOG.md"
+
+[project.entry-points.pytest11]
+pytest_run_context = "pytest_run_context.plugin"
+
+[dependency-groups]
+dev = ["pytest>=7.0.0", "ruff>=0.6", "ty"]
+examples = ["python-dotenv>=1"]
+redis-integration = ["testcontainers[redis]>=4.15,<5"]
+
+[tool.uv]
+package = true
+
+[tool.uv.dependency-groups]
+redis-integration = { requires-python = ">=3.10" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+markers = [
+  "integration: tests that exercise persistent or external infrastructure",
+  "redis_integration: tests that require Docker to run a disposable Redis container",
+]
+
+[tool.ruff.lint]
+# Postponed PEP 604 annotations are evaluated by Pydantic 2.0 on Python 3.9.
+ignore = ["FA100"]
