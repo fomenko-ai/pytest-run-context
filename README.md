@@ -27,6 +27,13 @@ uv run pytest
 
 Install the optional Redis backend with `uv add 'pytest-run-context[redis]'`.
 
+## Agent Skills
+
+`pytest-run-context` includes four skills that help AI coding agents set up, configure, integrate,
+and migrate run-context workflows. They do not add runtime dependencies or change the pytest
+plugin's behavior. See [Agent Skills](docs/agent-skills.md) for the available skills and installation
+instructions.
+
 ## Usage
 
 ```mermaid

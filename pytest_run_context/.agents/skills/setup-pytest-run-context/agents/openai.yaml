@@ -1,0 +1,4 @@
+interface:
+  display_name: "Set up pytest run context"
+  short_description: "Add the plugin to an existing pytest project"
+  default_prompt: "Use $setup-pytest-run-context to integrate pytest-run-context into this project."

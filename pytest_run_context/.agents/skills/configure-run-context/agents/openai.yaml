@@ -1,0 +1,4 @@
+interface:
+  display_name: "Configure run context"
+  short_description: "Define context models, lifecycle, and storage"
+  default_prompt: "Use $configure-run-context to configure custom run metadata and persistence."

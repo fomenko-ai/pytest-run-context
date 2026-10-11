@@ -1,0 +1,50 @@
+[
+  {
+    "skill": "setup-pytest-run-context",
+    "ambiguous": false,
+    "prompt": "Add pytest-run-context to this uv pytest project. Pytest owns the run and in-memory persistence is sufficient.",
+    "expected_behavior": "Inspect the project, install with uv, rely on pytest11 auto-loading, and verify a pytest-owned run without asking redundant questions."
+  },
+  {
+    "skill": "setup-pytest-run-context",
+    "ambiguous": true,
+    "prompt": "Set up pytest-run-context for our pipeline.",
+    "expected_behavior": "Inspect the pipeline and then ask whether pytest or an external workflow owns creation and completion when the repository does not answer that question."
+  },
+  {
+    "skill": "configure-run-context",
+    "ambiguous": false,
+    "prompt": "Add an environment field and a service_versions mapping to our existing BaseCustomContext subclass and persist them in the configured SQLite backend.",
+    "expected_behavior": "Update the existing schema and configuration minimally, use explicit save boundaries, and verify persisted values."
+  },
+  {
+    "skill": "configure-run-context",
+    "ambiguous": true,
+    "prompt": "Make our run context shared between processes.",
+    "expected_behavior": "Inspect existing infrastructure and ask which available shared backend and concurrency semantics are intended if they cannot be inferred."
+  },
+  {
+    "skill": "integrate-run-context-reporting",
+    "ambiguous": false,
+    "prompt": "Add run_context.info.run_id as a JUnit XML property on every test and verify the generated XML.",
+    "expected_behavior": "Use pytest's installed public JUnit mechanism, preserve current options, and inspect the XML artifact."
+  },
+  {
+    "skill": "integrate-run-context-reporting",
+    "ambiguous": true,
+    "prompt": "Put our context into Allure.",
+    "expected_behavior": "Inspect Allure usage and ask which fields and report scope are approved when the project does not define them."
+  },
+  {
+    "skill": "migrate-to-pytest-run-context",
+    "ambiguous": false,
+    "prompt": "Inventory our custom run_context fixture and SQLite repository, produce a compatibility map, then migrate without changing its externally owned lifecycle.",
+    "expected_behavior": "Map all call sites, preserve lifecycle ownership, obtain approval for behavioral differences, migrate incrementally, and verify before deletion."
+  },
+  {
+    "skill": "migrate-to-pytest-run-context",
+    "ambiguous": true,
+    "prompt": "Replace our old context implementation with pytest-run-context.",
+    "expected_behavior": "Inventory behavior first and ask for decisions about unsupported or materially different behavior before changing files."
+  }
+]

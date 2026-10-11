@@ -1,0 +1,4 @@
+interface:
+  display_name: "Integrate context reporting"
+  short_description: "Expose safe run metadata in existing reports"
+  default_prompt: "Use $integrate-run-context-reporting to add approved run context metadata to our reports."

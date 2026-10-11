@@ -1,0 +1,4 @@
+interface:
+  display_name: "Migrate to pytest run context"
+  short_description: "Replace legacy context code safely"
+  default_prompt: "Use $migrate-to-pytest-run-context to assess and migrate our custom run context."
