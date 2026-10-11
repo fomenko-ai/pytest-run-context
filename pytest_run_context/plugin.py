@@ -1,4 +1,6 @@
+from contextvars import Token
 from dataclasses import dataclass
+from typing import Optional, Protocol, Union
 
 import pytest
 
@@ -15,9 +17,14 @@ class PluginSettings:
     storage: Storage
 
 
+class _XdistNode(Protocol):
+    config: pytest.Config
+    workerinput: dict[str, object]
+
+
 _settings_key = pytest.StashKey[PluginSettings]()
 _context_key = pytest.StashKey[RunContext]()
-_token_key = pytest.StashKey[object]()
+_token_key = pytest.StashKey[Token[Optional[RunContext]]]()
 _owns_lifecycle_key = pytest.StashKey[bool]()
 _xdist_controller_key = pytest.StashKey[bool]()
 _worker_run_id_key = "pytest_run_context_run_id"
@@ -38,23 +45,19 @@ def configure(
     config.stash[_settings_key] = PluginSettings(context_model, storage)
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("run-context")
-    group.addoption(
-        "--run-id", action="store", default=None, help="Explicit unique run ID"
-    )
+    group.addoption("--run-id", action="store", default=None, help="Explicit unique run ID")
 
 
 @pytest.hookimpl(tryfirst=True)
-def pytest_sessionstart(session):
+def pytest_sessionstart(session: pytest.Session) -> None:
     config = session.config
     settings = config.stash.get(_settings_key, None)
     if settings is None:
         settings = PluginSettings(BaseCustomContext, MemoryStorage())
     worker_input = getattr(config, "workerinput", None)
-    worker_run_id = (
-        worker_input.get(_worker_run_id_key) if worker_input is not None else None
-    )
+    worker_run_id = worker_input.get(_worker_run_id_key) if worker_input is not None else None
     requested_run_id = worker_run_id or config.getoption("--run-id")
     try:
         if worker_run_id is not None and isinstance(settings.storage, MemoryStorage):
@@ -91,7 +94,7 @@ def pytest_sessionstart(session):
 
 
 @pytest.hookimpl(optionalhook=True)
-def pytest_configure_node(node):
+def pytest_configure_node(node: _XdistNode) -> None:
     config = node.config
     context = config.stash[_context_key]
     if isinstance(context._storage, MemoryStorage):
@@ -104,11 +107,14 @@ def pytest_configure_node(node):
 
 
 @pytest.fixture(scope="session")
-def run_context():
+def run_context() -> RunContext:
     return get_run_context()
 
 
-def pytest_sessionfinish(session, exitstatus):
+def pytest_sessionfinish(
+    session: pytest.Session,
+    exitstatus: Union[int, pytest.ExitCode],
+) -> None:
     config = session.config
     if _context_key not in config.stash:
         return
@@ -118,9 +124,7 @@ def pytest_sessionfinish(session, exitstatus):
             if config.stash[_owns_lifecycle_key]:
                 if config.stash.get(_xdist_controller_key, False):
                     settings = config.stash.get(_settings_key, None)
-                    storage = (
-                        settings.storage if settings is not None else context._storage
-                    )
+                    storage = settings.storage if settings is not None else context._storage
                     context = RunContext.load(
                         run_id=context.info.run_id,
                         context_model=type(context.custom),
@@ -129,9 +133,7 @@ def pytest_sessionfinish(session, exitstatus):
                 context.finish()
         except Exception as exc:
             session.exitstatus = pytest.ExitCode.INTERNAL_ERROR
-            raise pytest.UsageError(
-                f"pytest_run_context final save failed: {exc}"
-            ) from exc
+            raise pytest.UsageError(f"pytest_run_context final save failed: {exc}") from exc
     finally:
         _deactivate(config.stash[_token_key])
         settings = config.stash.get(_settings_key, None)

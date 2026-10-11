@@ -22,9 +22,10 @@ Two workflow-focused examples are also available:
 
 ## Environment configuration
 
-JSON, SQLite, and Redis examples load the root `.env` file with
-`python-dotenv`. Install the examples dependency group and copy the safe
-template before changing values locally:
+Each configurable example defines its own typed settings model with
+`pydantic-settings`. The settings models load the root `.env` file. Install the
+examples dependency group and copy the safe template before changing values
+locally:
 
 ```bash
 uv sync --locked --group examples
@@ -33,8 +34,9 @@ cp .env.example .env
 
 The `.env` file is ignored by Git. Keep real Redis credentials only in that
 local file; never add them to `.env.example`. All example settings use the
-`PYTEST_RUN_CONTEXT_` prefix. Environment variables already exported by the
-shell take precedence over values in `.env`.
+`PYTEST_RUN_CONTEXT_` prefix and validate environment values when loaded.
+Environment variables already exported by the shell take precedence over
+values in `.env`.
 
 ## Memory storage
 

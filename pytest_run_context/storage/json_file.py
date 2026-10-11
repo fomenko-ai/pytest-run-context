@@ -1,5 +1,4 @@
 import json
-import os
 import tempfile
 from pathlib import Path
 from typing import Optional, Union
@@ -29,10 +28,10 @@ class JSONStorage:
             ) as stream:
                 name = stream.name
                 stream.write(payload)
-            os.replace(name, path)
+            Path(name).replace(path)
         finally:
-            if name is not None and os.path.exists(name):
-                os.unlink(name)
+            if name is not None and Path(name).exists():
+                Path(name).unlink()
 
     def create_run(self, run_id: str, info: str, custom: str) -> None:
         path = self._path(run_id)

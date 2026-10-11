@@ -68,14 +68,10 @@ def test_create_generates_uuid_invokes_start_and_persists() -> None:
 
 def test_create_accepts_explicit_id_and_rejects_duplicate_atomically() -> None:
     storage = MemoryStorage()
-    first = RunContext.create(
-        context_model=LifecycleContext, storage=storage, run_id="chosen-id"
-    )
+    first = RunContext.create(context_model=LifecycleContext, storage=storage, run_id="chosen-id")
 
     with pytest.raises(RunAlreadyExistsError, match="chosen-id"):
-        RunContext.create(
-            context_model=LifecycleContext, storage=storage, run_id="chosen-id"
-        )
+        RunContext.create(context_model=LifecycleContext, storage=storage, run_id="chosen-id")
 
     stored = storage.load_run("chosen-id")
     assert stored is not None
@@ -84,15 +80,11 @@ def test_create_accepts_explicit_id_and_rejects_duplicate_atomically() -> None:
 
 def test_load_restores_info_and_custom_without_start_hook() -> None:
     storage = MemoryStorage()
-    created = RunContext.create(
-        context_model=LifecycleContext, storage=storage, run_id="run-1"
-    )
+    created = RunContext.create(context_model=LifecycleContext, storage=storage, run_id="run-1")
     created.custom.value = 7
     created.save()
 
-    loaded = RunContext.load(
-        run_id="run-1", context_model=LifecycleContext, storage=storage
-    )
+    loaded = RunContext.load(run_id="run-1", context_model=LifecycleContext, storage=storage)
 
     assert loaded.info == created.info
     assert loaded.custom.value == 7
@@ -134,24 +126,18 @@ def test_load_rejects_invalid_stored_data(info: str, custom: str, message: str) 
 def test_loaded_context_can_be_modified_and_saved() -> None:
     storage = MemoryStorage()
     RunContext.create(context_model=LifecycleContext, storage=storage, run_id="run-1")
-    loaded = RunContext.load(
-        run_id="run-1", context_model=LifecycleContext, storage=storage
-    )
+    loaded = RunContext.load(run_id="run-1", context_model=LifecycleContext, storage=storage)
 
     loaded.custom.value = 9
     loaded.save()
 
-    restored = RunContext.load(
-        run_id="run-1", context_model=LifecycleContext, storage=storage
-    )
+    restored = RunContext.load(run_id="run-1", context_model=LifecycleContext, storage=storage)
     assert restored.custom.value == 9
 
 
 def test_finish_preserves_custom_identity_and_persists_hook_changes() -> None:
     storage = MemoryStorage()
-    context = RunContext.create(
-        context_model=LifecycleContext, storage=storage, run_id="run-1"
-    )
+    context = RunContext.create(context_model=LifecycleContext, storage=storage, run_id="run-1")
     custom = context.custom
 
     context.finish()
@@ -159,9 +145,7 @@ def test_finish_preserves_custom_identity_and_persists_hook_changes() -> None:
     assert context.custom is custom
     assert context.info.finished_at is not None
     assert context.custom.finished == 1
-    restored = RunContext.load(
-        run_id="run-1", context_model=LifecycleContext, storage=storage
-    )
+    restored = RunContext.load(run_id="run-1", context_model=LifecycleContext, storage=storage)
     assert restored.info.finished_at == context.info.finished_at
     assert restored.custom.value == 2
     assert restored.custom.finished == 1
@@ -169,9 +153,7 @@ def test_finish_preserves_custom_identity_and_persists_hook_changes() -> None:
 
 def test_finish_hook_failure_does_not_apply_info_or_persist() -> None:
     storage = MemoryStorage()
-    context = RunContext.create(
-        context_model=FailingFinishContext, storage=storage, run_id="run-1"
-    )
+    context = RunContext.create(context_model=FailingFinishContext, storage=storage, run_id="run-1")
     before = storage.load_run("run-1")
 
     with pytest.raises(RuntimeError, match="hook failed"):
@@ -184,9 +166,7 @@ def test_finish_hook_failure_does_not_apply_info_or_persist() -> None:
 
 def test_finish_storage_failure_is_propagated() -> None:
     storage = FailingFinishStorage()
-    context = RunContext.create(
-        context_model=LifecycleContext, storage=storage, run_id="run-1"
-    )
+    context = RunContext.create(context_model=LifecycleContext, storage=storage, run_id="run-1")
 
     with pytest.raises(OSError, match="storage failed"):
         context.finish()
@@ -200,9 +180,7 @@ def test_finish_storage_failure_is_propagated() -> None:
 
 def test_finish_rejects_already_finished_context() -> None:
     storage = MemoryStorage()
-    context = RunContext.create(
-        context_model=LifecycleContext, storage=storage, run_id="run-1"
-    )
+    context = RunContext.create(context_model=LifecycleContext, storage=storage, run_id="run-1")
     context.finish()
 
     with pytest.raises(RunAlreadyFinishedError, match="already finished"):
@@ -213,14 +191,10 @@ def test_finish_rejects_already_finished_context() -> None:
 
 def test_load_allows_finished_context() -> None:
     storage = MemoryStorage()
-    context = RunContext.create(
-        context_model=LifecycleContext, storage=storage, run_id="run-1"
-    )
+    context = RunContext.create(context_model=LifecycleContext, storage=storage, run_id="run-1")
     context.finish()
 
-    loaded = RunContext.load(
-        run_id="run-1", context_model=LifecycleContext, storage=storage
-    )
+    loaded = RunContext.load(run_id="run-1", context_model=LifecycleContext, storage=storage)
 
     assert loaded.info.finished_at is not None
 

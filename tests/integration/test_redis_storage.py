@@ -35,7 +35,8 @@ def redis_prefix() -> str:
 
 
 def test_redis_storage_contract_against_real_redis(
-    redis_client: Any, redis_prefix: str
+    redis_client: Any,  # noqa: ANN401 - third-party client type is loaded dynamically
+    redis_prefix: str,
 ) -> None:
     storage = RedisStorage(redis_client, ttl_seconds=60, prefix=redis_prefix)
 
@@ -59,7 +60,8 @@ def test_redis_storage_contract_against_real_redis(
 
 
 def test_redis_storage_renews_and_disables_ttl(
-    redis_client: Any, redis_prefix: str
+    redis_client: Any,  # noqa: ANN401 - third-party client type is loaded dynamically
+    redis_prefix: str,
 ) -> None:
     expiring = RedisStorage(redis_client, ttl_seconds=60, prefix=redis_prefix)
     expiring.create_run("expiring", "info", "custom")

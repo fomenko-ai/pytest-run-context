@@ -79,10 +79,10 @@ def test_json_storage_removes_temporary_file_when_replace_fails(
     storage = JSONStorage(tmp_path)
     storage.create_run("r1", "{}", "{}")
 
-    def fail_replace(source: str, destination: Path) -> None:
+    def fail_replace(source: Path, destination: Path) -> None:
         raise OSError(f"cannot replace {destination.name}")
 
-    monkeypatch.setattr("pytest_run_context.storage.json_file.os.replace", fail_replace)
+    monkeypatch.setattr(Path, "replace", fail_replace)
 
     with pytest.raises(OSError, match="cannot replace"):
         storage.save_run("r1", '{"changed":true}', "{}")
@@ -154,7 +154,8 @@ def test_sqlite_context_created_outside_pytest_is_loaded_in_subprocess(
         encoding="utf-8",
     )
 
-    result = subprocess.run(
+    # The command uses the current interpreter and a test-generated project path.
+    result = subprocess.run(  # noqa: S603
         [
             sys.executable,
             "-m",

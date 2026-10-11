@@ -10,9 +10,7 @@ MINIMUM_DEPENDENCIES = (
 )
 
 
-def run_tests(
-    python_version: str, *dependencies: str
-) -> subprocess.CompletedProcess[str]:
+def run_tests(python_version: str, *dependencies: str) -> subprocess.CompletedProcess[str]:
     command = [
         "uv",
         "run",
@@ -27,7 +25,8 @@ def run_tests(
         command.extend(("--with", dependency))
     command.extend(("pytest", "tests/unit"))
 
-    return subprocess.run(
+    # The command consists only of repository-controlled executables and test parameters.
+    return subprocess.run(  # noqa: S603
         command,
         check=False,
         text=True,

@@ -61,9 +61,7 @@ class RunContext(Generic[T]):
         try:
             info = RunInfo.model_validate_json(stored.info)
         except ValidationError as exc:
-            raise InvalidStoredRunError(
-                f"Stored RunInfo for run {run_id!r} is invalid"
-            ) from exc
+            raise InvalidStoredRunError(f"Stored RunInfo for run {run_id!r} is invalid") from exc
         if info.run_id != run_id:
             raise InvalidStoredRunError(
                 f"Stored RunInfo ID {info.run_id!r} does not match requested run {run_id!r}"
@@ -86,9 +84,7 @@ class RunContext(Generic[T]):
 
     def finish(self) -> None:
         if self._info.finished_at is not None:
-            raise RunAlreadyFinishedError(
-                f"RunContext {self._info.run_id!r} is already finished"
-            )
+            raise RunAlreadyFinishedError(f"RunContext {self._info.run_id!r} is already finished")
         final_info = RunInfo.model_validate(
             {
                 **self._info.model_dump(),

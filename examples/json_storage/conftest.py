@@ -1,14 +1,10 @@
-import os
-from importlib import import_module
-from pathlib import Path
 from typing import Optional
 
 import pytest
 
 from pytest_run_context import BaseCustomContext, RunInfo, configure
 from pytest_run_context.storage import JSONStorage
-
-import_module("dotenv").load_dotenv()
+from settings import settings
 
 
 class ProjectContext(BaseCustomContext):
@@ -24,14 +20,8 @@ class ProjectContext(BaseCustomContext):
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    directory = Path(
-        os.environ.get(
-            "PYTEST_RUN_CONTEXT_JSON_DIRECTORY",
-            "/tmp/pytest-run-context-example/json",
-        )
-    )
     configure(
         config,
         context_model=ProjectContext,
-        storage=JSONStorage(directory),
+        storage=JSONStorage(settings.directory),
     )

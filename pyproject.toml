@@ -43,8 +43,14 @@ Changelog = "https://github.com/fomenko-ai/pytest-run-context/blob/main/CHANGELO
 pytest_run_context = "pytest_run_context.plugin"
 
 [dependency-groups]
-dev = ["pytest>=7.0.0", "pytest-xdist>=3.6", "ruff>=0.6", "ty"]
-examples = ["python-dotenv>=1"]
+dev = [
+  { include-group = "examples" },
+  "pytest>=7.0.0",
+  "pytest-xdist>=3.6",
+  "ruff>=0.6",
+  "ty",
+]
+examples = ["pydantic-settings>=2"]
 redis-integration = ["testcontainers[redis]>=4.15,<5"]
 
 [tool.uv]
@@ -60,6 +66,19 @@ markers = [
   "redis_integration: tests that require Docker to run a disposable Redis container",
 ]
 
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
 [tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "PT", "ANN", "S", "PTH"]
 # Postponed PEP 604 annotations are evaluated by Pydantic 2.0 on Python 3.9.
 ignore = ["FA100"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["context", "settings", "pytest_run_context"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
+"examples/**/test_*.py" = ["S101"]
+"python_compatibility_tests/**/*.py" = ["S101"]

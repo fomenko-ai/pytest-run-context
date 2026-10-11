@@ -1,12 +1,31 @@
+from collections.abc import Mapping
 from importlib import import_module
-from typing import Optional
+from typing import Optional, Protocol, Union
 
 from .base import RunAlreadyExistsError, StoredRun
+
+_RedisArgument = Union[bytes, str, bytearray, float]
+_RedisValue = Union[bytes, str]
+
+
+class _RedisClient(Protocol):
+    def eval(
+        self,
+        script: str,
+        key_count: int,
+        /,
+        *args: _RedisArgument,
+    ) -> object: ...
+    def hgetall(self, key: str, /) -> Mapping[_RedisValue, _RedisValue]: ...
+    def close(self) -> None: ...
 
 
 class RedisStorage:
     def __init__(
-        self, client, ttl_seconds: int = 86400, prefix: str = "pytest-run"
+        self,
+        client: _RedisClient,
+        ttl_seconds: int = 86400,
+        prefix: str = "pytest-run",
     ) -> None:
         if ttl_seconds < 0:
             raise ValueError("ttl_seconds must be >= 0")
@@ -96,8 +115,12 @@ class RedisStorage:
         if not data:
             return None
 
-        def decode(value):
-            return value.decode() if isinstance(value, bytes) else value
+        def decode(value: object) -> str:
+            if isinstance(value, bytes):
+                return value.decode()
+            if isinstance(value, str):
+                return value
+            raise TypeError("Redis run data must contain string or bytes values")
 
         return StoredRun(
             decode(data.get(b"info", data.get("info"))),

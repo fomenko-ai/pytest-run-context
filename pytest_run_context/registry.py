@@ -3,9 +3,7 @@ from typing import Optional
 
 from .context import RunContext
 
-_current: ContextVar[Optional[RunContext]] = ContextVar(
-    "pytest_run_context", default=None
-)
+_current: ContextVar[Optional[RunContext]] = ContextVar("pytest_run_context", default=None)
 
 
 def get_run_context() -> RunContext:
@@ -15,9 +13,9 @@ def get_run_context() -> RunContext:
     return context
 
 
-def _activate(context: RunContext) -> Token:
+def _activate(context: RunContext) -> Token[Optional[RunContext]]:
     return _current.set(context)
 
 
-def _deactivate(token: Token) -> None:
+def _deactivate(token: Token[Optional[RunContext]]) -> None:
     _current.reset(token)

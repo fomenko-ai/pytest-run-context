@@ -129,7 +129,8 @@ def _write_project(
 
 
 def _run_xdist(project: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    # The command uses the current interpreter and caller-controlled test arguments.
+    return subprocess.run(  # noqa: S603
         [
             sys.executable,
             "-m",
@@ -295,9 +296,7 @@ def test_xdist_rejects_memory_storage(tmp_path: Path) -> None:
     result = _run_xdist(project)
 
     assert result.returncode != 0
-    assert "MemoryStorage cannot be used with multiple processes" in (
-        result.stdout + result.stderr
-    )
+    assert "MemoryStorage cannot be used with multiple processes" in (result.stdout + result.stderr)
 
 
 def test_ordinary_pytest_works_without_xdist_plugin(tmp_path: Path) -> None:
@@ -308,7 +307,8 @@ def test_ordinary_pytest_works_without_xdist_plugin(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(
+    # The command uses the current interpreter and a test-generated project path.
+    result = subprocess.run(  # noqa: S603
         [
             sys.executable,
             "-m",

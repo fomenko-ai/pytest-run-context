@@ -1,9 +1,9 @@
 import pytest
-from context import ProjectContext
-from settings import DATABASE
 
+from context import ProjectContext
 from pytest_run_context import configure
 from pytest_run_context.storage import SQLiteStorage
+from settings import settings
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -12,5 +12,5 @@ def pytest_configure(config: pytest.Config) -> None:
     configure(
         config,
         context_model=ProjectContext,
-        storage=SQLiteStorage(DATABASE),
+        storage=SQLiteStorage(settings.db),
     )

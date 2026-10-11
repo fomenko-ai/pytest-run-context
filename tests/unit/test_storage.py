@@ -22,7 +22,12 @@ class FakeRedisClient:
         self.eval_calls: list[tuple[Any, ...]] = []
         self.closed = False
 
-    def eval(self, script: str, key_count: int, *args: Any) -> int:
+    def eval(
+        self,
+        script: str,
+        key_count: int,
+        *args: Any,  # noqa: ANN401 - fake mirrors redis-py's dynamically typed API
+    ) -> int:
         self.eval_calls.append((script, key_count, *args))
         key, info, custom, ttl, create_flag = args
         exists = key in self.data
@@ -64,7 +69,11 @@ class FakeRedisFactory:
     kwargs: ClassVar[dict[str, Any]] = {}
 
     @classmethod
-    def from_url(cls, url: str, **kwargs: Any) -> FakeRedisClient:
+    def from_url(
+        cls,
+        url: str,
+        **kwargs: Any,  # noqa: ANN401 - fake mirrors redis-py's dynamically typed API
+    ) -> FakeRedisClient:
         cls.url = url
         cls.kwargs = kwargs
         return cls.client
@@ -155,6 +164,7 @@ def test_redis_storage_from_url_configures_retry_and_owns_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     install_fake_redis_modules(monkeypatch)
+    example_password = "example-password"  # noqa: S105 - non-secret test fixture value
     client = FakeRedisClient()
     FakeRedisFactory.client = client
 
@@ -163,7 +173,7 @@ def test_redis_storage_from_url_configures_retry_and_owns_client(
         port=6380,
         database=4,
         username="example-user",
-        password="example-password",
+        password=example_password,
         ttl_seconds=120,
         prefix="example",
         retry_count=5,
@@ -175,7 +185,7 @@ def test_redis_storage_from_url_configures_retry_and_owns_client(
     assert FakeRedisFactory.kwargs["port"] == 6380
     assert FakeRedisFactory.kwargs["db"] == 4
     assert FakeRedisFactory.kwargs["username"] == "example-user"
-    assert FakeRedisFactory.kwargs["password"] == "example-password"
+    assert FakeRedisFactory.kwargs["password"] == example_password
     retry = FakeRedisFactory.kwargs["retry"]
     assert isinstance(retry, FakeRetry)
     assert retry.retries == 5

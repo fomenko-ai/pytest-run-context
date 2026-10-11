@@ -72,8 +72,8 @@ def test_configure_rejects_repeated_configuration() -> None:
     ],
 )
 def test_configure_rejects_invalid_dependencies(
-    context_model: Any,
-    storage: Any,
+    context_model: Any,  # noqa: ANN401 - parametrization intentionally supplies invalid types
+    storage: Any,  # noqa: ANN401 - parametrization intentionally supplies invalid types
     message: str,
 ) -> None:
     config = FakeConfig()
@@ -140,7 +140,10 @@ def test_configured_plugin_lifecycle_and_explicit_save(
             configure(config, context_model=CustomContext, storage=storage)
 
         def pytest_unconfigure(config):
-            context = config.stash[__import__("pytest_run_context.plugin", fromlist=["_context_key"])._context_key]
+            context_key = __import__(
+                "pytest_run_context.plugin", fromlist=["_context_key"]
+            )._context_key
+            context = config.stash[context_key]
             assert context.custom._events == []
             saved = storage.load_run("chosen-id")
             assert saved is not None
@@ -233,7 +236,10 @@ def test_plugin_created_context_is_finished_automatically(
             configure(config, context_model=CustomContext, storage=storage)
 
         def pytest_unconfigure(config):
-            context = config.stash[__import__("pytest_run_context.plugin", fromlist=["_context_key"])._context_key]
+            context_key = __import__(
+                "pytest_run_context.plugin", fromlist=["_context_key"]
+            )._context_key
+            context = config.stash[context_key]
             saved = storage.load_run(context.info.run_id)
             assert saved is not None
             assert '"finished_at":"' in saved.info
@@ -273,7 +279,10 @@ def test_plugin_created_context_is_finished_after_test_failure(
             configure(config, context_model=CustomContext, storage=storage)
 
         def pytest_unconfigure(config):
-            context = config.stash[__import__("pytest_run_context.plugin", fromlist=["_context_key"])._context_key]
+            context_key = __import__(
+                "pytest_run_context.plugin", fromlist=["_context_key"]
+            )._context_key
+            context = config.stash[context_key]
             saved = storage.load_run(context.info.run_id)
             assert saved is not None
             assert '"finished_at":"' in saved.info
@@ -337,9 +346,7 @@ def test_initialization_failure_does_not_create_active_context(
     result = pytester.runpytest()
 
     assert result.ret != 0
-    result.stdout.fnmatch_lines(
-        ["*ValidationError: 1 validation error for InvalidContext*"]
-    )
+    result.stdout.fnmatch_lines(["*ValidationError: 1 validation error for InvalidContext*"])
 
 
 def test_final_save_failure_fails_run_and_closes_storage(
@@ -367,15 +374,16 @@ def test_final_save_failure_fails_run_and_closes_storage(
 
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stdout.fnmatch_lines(["*STORAGE_CLOSED*"])
-    result.stderr.fnmatch_lines(
-        ["*pytest_run_context final save failed: cannot persist*"]
-    )
+    result.stderr.fnmatch_lines(["*pytest_run_context final save failed: cannot persist*"])
 
 
 def test_sessionfinish_without_initialized_context_is_noop() -> None:
     config = FakeConfig()
-    session = SimpleNamespace(config=config, exitstatus=pytest.ExitCode.OK)
+    session = cast(
+        pytest.Session,
+        SimpleNamespace(config=config, exitstatus=pytest.ExitCode.OK),
+    )
 
-    plugin.pytest_sessionfinish(session, pytest.ExitCode.OK)  # type: ignore[arg-type]
+    plugin.pytest_sessionfinish(session, pytest.ExitCode.OK)
 
     assert session.exitstatus == pytest.ExitCode.OK
