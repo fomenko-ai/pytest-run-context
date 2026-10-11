@@ -43,7 +43,7 @@ Changelog = "https://github.com/fomenko-ai/pytest-run-context/blob/main/CHANGELO
 pytest_run_context = "pytest_run_context.plugin"
 
 [dependency-groups]
-dev = ["pytest>=7.0.0", "ruff>=0.6", "ty"]
+dev = ["pytest>=7.0.0", "pytest-xdist>=3.6", "ruff>=0.6", "ty"]
 examples = ["python-dotenv>=1"]
 redis-integration = ["testcontainers[redis]>=4.15,<5"]
 

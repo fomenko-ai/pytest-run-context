@@ -1,10 +1,14 @@
 # 0001: RunContext finish failure semantics and recovery strategy
 
-Status: accepted
+Status: superseded by [0002](0002-xdist-lifecycle-and-explicit-save.md)
 Date: 2026-10-10
 Task: Support creating and loading RunContext outside pytest
 
 ## Context
+
+This record describes the original single-process lifecycle. Its completion failure analysis
+remains applicable, but its pytest session ownership and automatic-save decision is replaced by
+[0002](0002-xdist-lifecycle-and-explicit-save.md).
 
 Finishing a run combines three operations that cannot share one transaction: executing the user's
 `on_run_finish()` hook, updating immutable `RunInfo` with `finished_at`, and persisting both

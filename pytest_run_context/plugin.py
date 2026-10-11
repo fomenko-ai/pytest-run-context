@@ -19,6 +19,8 @@ _settings_key = pytest.StashKey[PluginSettings]()
 _context_key = pytest.StashKey[RunContext]()
 _token_key = pytest.StashKey[object]()
 _owns_lifecycle_key = pytest.StashKey[bool]()
+_xdist_controller_key = pytest.StashKey[bool]()
+_worker_run_id_key = "pytest_run_context_run_id"
 
 
 def configure(
@@ -43,13 +45,23 @@ def pytest_addoption(parser):
     )
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_sessionstart(session):
     config = session.config
     settings = config.stash.get(_settings_key, None)
     if settings is None:
         settings = PluginSettings(BaseCustomContext, MemoryStorage())
-    requested_run_id = config.getoption("--run-id")
+    worker_input = getattr(config, "workerinput", None)
+    worker_run_id = (
+        worker_input.get(_worker_run_id_key) if worker_input is not None else None
+    )
+    requested_run_id = worker_run_id or config.getoption("--run-id")
     try:
+        if worker_run_id is not None and isinstance(settings.storage, MemoryStorage):
+            raise pytest.UsageError(
+                "pytest-xdist requires Storage shared by the controller and workers; "
+                "MemoryStorage cannot be used with multiple processes"
+            )
         if requested_run_id is None:
             context = RunContext.create(
                 context_model=settings.context_model,
@@ -78,6 +90,19 @@ def pytest_sessionstart(session):
     config.stash[_token_key] = _activate(context)
 
 
+@pytest.hookimpl(optionalhook=True)
+def pytest_configure_node(node):
+    config = node.config
+    context = config.stash[_context_key]
+    if isinstance(context._storage, MemoryStorage):
+        raise pytest.UsageError(
+            "pytest-xdist requires Storage shared by the controller and workers; "
+            "MemoryStorage cannot be used with multiple processes"
+        )
+    config.stash[_xdist_controller_key] = True
+    node.workerinput[_worker_run_id_key] = context.info.run_id
+
+
 @pytest.fixture(scope="session")
 def run_context():
     return get_run_context()
@@ -91,9 +116,17 @@ def pytest_sessionfinish(session, exitstatus):
     try:
         try:
             if config.stash[_owns_lifecycle_key]:
+                if config.stash.get(_xdist_controller_key, False):
+                    settings = config.stash.get(_settings_key, None)
+                    storage = (
+                        settings.storage if settings is not None else context._storage
+                    )
+                    context = RunContext.load(
+                        run_id=context.info.run_id,
+                        context_model=type(context.custom),
+                        storage=storage,
+                    )
                 context.finish()
-            else:
-                context.save()
         except Exception as exc:
             session.exitstatus = pytest.ExitCode.INTERNAL_ERROR
             raise pytest.UsageError(

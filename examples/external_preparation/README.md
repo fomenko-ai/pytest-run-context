@@ -13,9 +13,9 @@ uv run python examples/external_preparation/cleanup.py "$RUN_ID"
 
 `prepare.py` prints the generated ID after saving the prepared environment.
 The pytest configuration requires that ID and opens the same SQLite database.
-At pytest session completion the plugin saves changes but leaves the context
-active. `cleanup.py` is the lifecycle owner and calls `finish()` after all
-workflow stages.
+The test calls `run_context.save()` explicitly. Pytest does not automatically
+save or finish a context loaded with `--run-id`. `cleanup.py` is the lifecycle
+owner and calls `finish()` after all workflow stages.
 
 The database defaults to
 `/tmp/pytest-run-context-external-preparation.sqlite3`. Override it consistently

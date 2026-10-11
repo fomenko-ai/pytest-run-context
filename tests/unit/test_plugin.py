@@ -166,6 +166,48 @@ def test_configured_plugin_lifecycle_and_explicit_save(
     result.assert_outcomes(passed=1)
 
 
+def test_loaded_context_is_not_saved_automatically(
+    pytester: pytest.Pytester,
+) -> None:
+    pytester.makeconftest(
+        """
+        from pytest_run_context import BaseCustomContext, RunContext, configure
+        from pytest_run_context.storage import MemoryStorage
+
+        class CustomContext(BaseCustomContext):
+            value: int = 0
+
+        storage = MemoryStorage()
+        prepared = RunContext.create(
+            context_model=CustomContext,
+            storage=storage,
+            run_id="external-run",
+        )
+        prepared.custom.value = 1
+        prepared.save()
+
+        def pytest_configure(config):
+            configure(config, context_model=CustomContext, storage=storage)
+
+        def pytest_unconfigure(config):
+            saved = storage.load_run("external-run")
+            assert saved is not None
+            assert saved.custom == '{"value":1}'
+            assert '"finished_at":null' in saved.info
+        """
+    )
+    pytester.makepyfile(
+        """
+        def test_mutates_without_save(run_context):
+            run_context.custom.value = 2
+        """
+    )
+
+    result = pytester.runpytest("--run-id", "external-run")
+
+    result.assert_outcomes(passed=1)
+
+
 def test_plugin_created_context_is_finished_automatically(
     pytester: pytest.Pytester,
 ) -> None:
@@ -209,6 +251,40 @@ def test_plugin_created_context_is_finished_automatically(
     result = pytester.runpytest()
 
     result.assert_outcomes(passed=1)
+
+
+def test_plugin_created_context_is_finished_after_test_failure(
+    pytester: pytest.Pytester,
+) -> None:
+    pytester.makeconftest(
+        """
+        from pytest_run_context import BaseCustomContext, configure
+        from pytest_run_context.storage import MemoryStorage
+
+        class CustomContext(BaseCustomContext):
+            finished: bool = False
+
+            def on_run_finish(self, info):
+                self.finished = True
+
+        storage = MemoryStorage()
+
+        def pytest_configure(config):
+            configure(config, context_model=CustomContext, storage=storage)
+
+        def pytest_unconfigure(config):
+            context = config.stash[__import__("pytest_run_context.plugin", fromlist=["_context_key"])._context_key]
+            saved = storage.load_run(context.info.run_id)
+            assert saved is not None
+            assert '"finished_at":"' in saved.info
+            assert saved.custom == '{"finished":true}'
+        """
+    )
+    pytester.makepyfile("def test_fails(): assert False")
+
+    result = pytester.runpytest()
+
+    result.assert_outcomes(failed=1)
 
 
 @pytest.mark.parametrize(("run_id", "finished"), [("missing", False), ("done", True)])

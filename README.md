@@ -50,11 +50,12 @@ pytest calls `finish()` when its session ends. `finish()` calls
 `on_run_finish()`, sets `finished_at`, and persists both objects.
 
 Passing `--run-id` means loading an existing active context; it never chooses
-an ID for a new context. Pytest preserves fields prepared by another process,
-saves the context when its session ends, and leaves it unfinished for its
-external lifecycle owner. An unknown or already finished ID causes a usage
-error before tests execute. A consuming project can require `--run-id` in its
-own hook:
+an ID for a new context. Pytest preserves fields prepared by another process
+and leaves the context unfinished for its external lifecycle owner. It does not
+automatically save changes at session completion: tests, fixtures, or other
+user code must call `run_context.save()` explicitly. An unknown or already
+finished ID causes a usage error before tests execute. A consuming project can
+require `--run-id` in its own hook:
 
 ```python
 import pytest
@@ -118,7 +119,10 @@ run. It raises `RunNotFoundError` for a missing run and
 allowed for inspection, but calling `finish()` again raises
 `RunAlreadyFinishedError`.
 
-`save()` writes the current snapshot without invoking lifecycle hooks.
+`save()` explicitly writes the current snapshot without invoking lifecycle
+hooks. Mutable custom values are visible immediately to code sharing the same
+in-memory context, but are not persisted merely because a pytest session ends.
+`create()` persists the initial state and `finish()` persists the final state.
 `on_run_start()` runs only during creation. Loading, including pytest loading
 through `--run-id`, does not run it again. The owner that created the logical
 run is responsible for calling `finish()`: pytest owns contexts it creates,
@@ -130,10 +134,6 @@ instances cannot. SQLite and JSON data never expire automatically; Redis TTL
 is configurable and renewed on every write. JSON storage is intended for
 sequential, single-process access. Storage passed to standalone APIs remains
 owned by the caller and must be closed by it.
-
-Completion cannot be transactional across a user hook and arbitrary storage.
-Failure behavior and concurrency limitations are recorded in
-[`0001-run-context-finish-failure-semantics.md`](docs/decisions/0001-run-context-finish-failure-semantics.md).
 
 Without `configure()`, the plugin uses in-memory storage and the base custom
 context. The plugin does not collect test results or save after individual
@@ -147,6 +147,29 @@ SQLite, and Redis storage are in [`examples/`](examples/README.md). The
 external example demonstrates the full prepare → pytest → cleanup lifecycle.
 Configurable backend examples use the `PYTEST_RUN_CONTEXT_*` variables listed
 in [`.env.example`](.env.example).
+
+
+## pytest-xdist
+
+With `pytest -n N`, the controller creates one logical run and passes its
+`run_id` to every worker through xdist's `workerinput`. Each worker loads its
+own in-memory `RunContext` instance from the configured Storage. At session
+completion the controller reloads the latest stored snapshot and finishes the
+run once. Failed tests do not prevent this normal session finalization.
+
+With `pytest -n N --run-id=ID`, the controller and workers load the externally
+created run. None of them automatically saves or finishes it; the external
+lifecycle owner remains responsible for `finish()`.
+
+Explicit worker `save()` calls write complete snapshots. Concurrent changes
+from different workers are not merged, and the last completed write wins.
+xdist therefore requires a Storage backend shared by all processes, such as
+SQLite or Redis. `MemoryStorage` is rejected for multi-process runs. JSON
+storage remains intended for sequential, single-process access.
+
+Completion cannot be transactional across a user hook and arbitrary storage.
+Lifecycle ownership, xdist behavior, and failure limitations are recorded in
+[`0002-xdist-lifecycle-and-explicit-save.md`](docs/decisions/0002-xdist-lifecycle-and-explicit-save.md).
 
 ## Development with uv
 
