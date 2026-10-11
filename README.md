@@ -10,7 +10,41 @@
 
 Minimal pytest plugin: one mutable, session-wide Pydantic context, explicit persistence and pluggable Storage.
 
+## Installation
+
+Add the plugin to a uv project:
+
+```bash
+uv add pytest-run-context
+```
+
+Once installed, pytest loads the plugin automatically through its `pytest11`
+entry point. Run the consuming project's tests as usual:
+
+```bash
+uv run pytest
+```
+
+Install the optional Redis backend with `uv add 'pytest-run-context[redis]'`.
+
 ## Usage
+
+```mermaid
+flowchart TD
+    accTitle: Context flow inside pytest
+    accDescr: Pytest configures the plugin, creates or loads one shared context, and exposes it to tests.
+
+    A["pytest loads the plugin"] --> B["conftest.py calls<br/>configure"]
+    B --> C{"--run-id<br/>provided?"}
+    C -->|No| D["plugin creates RunContext<br/>and saves initial state"]
+    C -->|Yes| E["plugin loads existing<br/>RunContext"]
+    D --> F["fixture and accessor expose<br/>the same context instance"]
+    E --> F
+    F --> G["tests update context<br/>and call save explicitly"]
+    G --> H{"context created<br/>by pytest?"}
+    H -->|Yes| I["plugin finishes context<br/>and saves final state"]
+    H -->|No| J["external owner finishes<br/>the context later"]
+```
 
 `conftest.py`:
 
@@ -68,6 +102,20 @@ def pytest_configure(config):
 ```
 
 ## Creating and loading outside pytest
+
+```mermaid
+flowchart TD
+    accTitle: Context flow across external processes
+    accDescr: Preparation creates the context, pytest loads and updates it, and cleanup finishes it.
+
+    A["preparation creates<br/>RunContext"] --> B["on_run_start runs<br/>and initial state is saved"]
+    B --> C["preparation updates context<br/>and calls save"]
+    C --> D["pytest loads context<br/>with --run-id"]
+    D --> E["tests update context<br/>and call save explicitly"]
+    E --> F["cleanup loads the same<br/>RunContext"]
+    F --> G["cleanup calls finish"]
+    G --> H["on_run_finish runs<br/>and final state is saved"]
+```
 
 An external script can prepare a persistent context without a pytest
 `Config`:
@@ -142,12 +190,27 @@ automatically.
 
 ## Examples
 
-Runnable projects for standalone pytest, external preparation, Memory, JSON,
-SQLite, and Redis storage are in [`examples/`](examples/README.md). The
-external example demonstrates the full prepare → pytest → cleanup lifecycle.
+The [`examples/`](examples/README.md) directory contains runnable scenarios.
+Each example focuses on one decision so that storage behavior and context
+ownership can be understood independently:
+
+- [`memory_storage/`](examples/memory_storage/README.md) shows the smallest
+  storage setup when context data is needed only inside one process.
+- [`json_storage/`](examples/json_storage/README.md) shows human-readable,
+  file-based persistence with one JSON document per run.
+- [`sqlite_storage/`](examples/sqlite_storage/README.md) shows durable local
+  persistence in a single SQLite database.
+- [`redis_storage/`](examples/redis_storage/README.md) shows shared persistence
+  with configurable expiry and connection retries in an externally managed
+  Redis service.
+- [`standalone/`](examples/standalone/README.md) focuses on the lifecycle in
+  which pytest creates, saves, and finishes the context itself.
+- [`external_preparation/`](examples/external_preparation/README.md) shows a
+  multi-process workflow in which an external orchestrator owns the context
+  lifecycle while pytest loads and updates that context.
+
 Configurable backend examples use the `PYTEST_RUN_CONTEXT_*` variables listed
 in [`.env.example`](.env.example).
-
 
 ## pytest-xdist
 
