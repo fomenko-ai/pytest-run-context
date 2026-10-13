@@ -219,6 +219,86 @@ ownership can be understood independently:
 Configurable backend examples use the `PYTEST_RUN_CONTEXT_*` variables listed
 in [`.env.example`](.env.example).
 
+### Persistence format
+
+Every backend receives the same two independent JSON strings for a run:
+
+```text
+Storage entry for <run-id>
+├── info   = serialized RunInfo
+└── custom = serialized ProjectContext
+```
+
+The following representations all use the `ProjectContext` defined in
+[Usage](#usage). After `test_context` updates it and pytest finishes the run,
+the two serialized models are:
+
+```json
+{
+  "run_id": "<run-id>",
+  "started_at": "<started-at>",
+  "finished_at": "<finished-at>"
+}
+```
+
+```json
+{
+  "environment": "dev",
+  "stand_id": "stand-01",
+  "service_versions": {}
+}
+```
+
+#### Memory
+
+`MemoryStorage` keeps a `StoredRun` in its internal dictionary:
+
+```python
+{
+    "<run-id>": StoredRun(
+        info='{"run_id":"<run-id>","started_at":"<started-at>","finished_at":"<finished-at>"}',
+        custom='{"environment":"dev","stand_id":"stand-01","service_versions":{}}',
+    )
+}
+```
+
+#### JSON
+
+`JSONStorage` writes one file whose name is the SHA-256 hash of the run ID:
+
+```json
+{
+  "run_id": "<run-id>",
+  "info": "{\"run_id\":\"<run-id>\",\"started_at\":\"<started-at>\",\"finished_at\":\"<finished-at>\"}",
+  "custom": "{\"environment\":\"dev\",\"stand_id\":\"stand-01\",\"service_versions\":{}}"
+}
+```
+
+The nested values are strings because the models are serialized independently.
+
+#### SQLite
+
+`SQLiteStorage` writes one row to the `runs` table:
+
+| `run_id` | `info` | `custom` |
+| --- | --- | --- |
+| `<run-id>` | `{"run_id":"<run-id>","started_at":"<started-at>","finished_at":"<finished-at>"}` | `{"environment":"dev","stand_id":"stand-01","service_versions":{}}` |
+
+The `run_id` column is the table's primary key; `info` and `custom` are text
+columns.
+
+#### Redis
+
+`RedisStorage` writes one hash and applies the configured TTL to its key:
+
+```text
+pytest-run:<run-id>
+├── info   = {"run_id":"<run-id>","started_at":"<started-at>","finished_at":"<finished-at>"}
+└── custom = {"environment":"dev","stand_id":"stand-01","service_versions":{}}
+```
+
+Each write renews the TTL. Setting the TTL to `0` keeps the key indefinitely.
+
 ## pytest-xdist
 
 With `pytest -n N`, the controller creates one logical run and passes its
