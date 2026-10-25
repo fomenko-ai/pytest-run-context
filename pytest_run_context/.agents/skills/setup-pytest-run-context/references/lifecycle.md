@@ -1,7 +1,7 @@
 # Lifecycle selection
 
 Verify these rules against the installed package before applying them; they describe
-`pytest-run-context` 0.1.0.
+`pytest-run-context` 0.1.0 and 0.2.0.
 
 ## Pytest-owned run
 
@@ -35,6 +35,11 @@ a pytest usage error.
 The session-scoped `run_context` fixture and `get_run_context()` return the same in-memory instance
 in one active pytest execution context. The accessor fails before initialization and after teardown.
 It is backed by `ContextVar`; new threads do not inherit it automatically.
+
+From version 0.2.0, with_run_context(ProjectContext) injects that same instance into synchronous
+helpers as their first RunContext[ProjectContext] argument. Tests use the fixture; fixtures and
+hooks call helpers without being decorated themselves. Calls require the plugin's activation in
+pytest_sessionstart(); pytest_configure() is too early. Standalone contexts are not activated.
 
 With xdist, controller and workers hold distinct in-memory instances of the same logical run.
 Workers load through shared Storage. Their complete snapshot writes are not merged; the last

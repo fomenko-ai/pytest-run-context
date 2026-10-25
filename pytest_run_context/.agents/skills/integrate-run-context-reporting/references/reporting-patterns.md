@@ -6,8 +6,10 @@ integration boundaries; they are not native `pytest-run-context` features.
 ## Shared source data
 
 Within an active pytest session, use `run_context.info.run_id` and an explicit allowlist from
-`run_context.custom`. Code outside fixtures may call `get_run_context()`, but only while the context
-is active. `RunInfo` supplies timestamps and the run ID, not pass/fail status or test statistics.
+`run_context.custom`. On version 0.2.0 or later, synchronous reporting helpers use
+`@with_run_context(ProjectContext)` and a first `context: RunContext[ProjectContext]` parameter.
+Fixtures call helpers while the context is active. `RunInfo` supplies timestamps and the run ID,
+not pass/fail status or test statistics.
 
 Avoid copying `model_dump()` wholesale. Reports often leave the test environment and may retain
 data longer than the configured Storage.
@@ -21,11 +23,22 @@ attach allowlisted values per test:
 ```python
 import pytest
 
+from pytest_run_context import RunContext, with_run_context
+
+
+@with_run_context(ProjectContext)
+def reporting_run_id(context: RunContext[ProjectContext]) -> str:
+    return context.info.run_id
+
 
 @pytest.fixture(autouse=True)
-def report_run_id(record_property, run_context) -> None:
-    record_property("run_id", run_context.info.run_id)
+def report_run_id(record_property) -> None:
+    record_property("run_id", reporting_run_id())
 ```
+
+Import the existing configured ProjectContext model for this example. The fixture is not decorated
+with with_run_context, and tests retain fixture-based context access. For older package versions,
+use the run_context fixture directly in the bridge rather than assuming the decorator exists.
 
 Do not add this globally without confirming that every test should carry the property. Some JUnit
 consumers or pytest `junit_family` modes handle custom properties differently. Generate the XML and

@@ -3,10 +3,11 @@
 Use this as a starting point, not as a substitute for inspecting the legacy implementation and the
 installed package version.
 
-| Legacy capability | Version 0.1.0 mapping | Migration note |
+| Legacy capability | Version 0.2.0 mapping | Migration note |
 | --- | --- | --- |
 | Session context fixture | `run_context` | Session-scoped within each pytest process |
 | Non-fixture accessor | `get_run_context()` | Active pytest context only; fails before/after it |
+| Typed synchronous helper access | `with_run_context(ProjectContext)` | Injects context first; fixtures/hooks call helpers; tests remain on fixtures |
 | Project metadata model | `BaseCustomContext` subclass | Assignment validation; extra fields forbidden |
 | Run ID and timestamps | immutable `RunInfo` | Only `run_id`, `started_at`, `finished_at` |
 | Start callback | `on_run_start(info)` | Creation only, before initial persistence |

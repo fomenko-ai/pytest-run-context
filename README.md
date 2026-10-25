@@ -29,8 +29,9 @@ Install the optional Redis backend with `uv add 'pytest-run-context[redis]'`.
 
 ## Agent Skills
 
-`pytest-run-context` includes four skills that help AI coding agents set up, configure, integrate,
-and migrate run-context workflows. They do not add runtime dependencies or change the pytest
+`pytest-run-context` includes five skills that help AI coding agents set up, configure, integrate,
+migrate run-context workflows, and refactor helpers to use `with_run_context`.
+They do not add runtime dependencies or change the pytest
 plugin's behavior. See [Agent Skills](docs/agent-skills.md) for the available skills and installation
 instructions.
 
@@ -107,6 +108,51 @@ def pytest_configure(config):
         raise pytest.UsageError("Missing --run-id. Run environment preparation first.")
     configure(config, context_model=ProjectContext, storage=SQLiteStorage("runs.db"))
 ```
+
+## Access from helper functions
+
+Use `with_run_context(ProjectContext)` to pass the active context to a synchronous helper
+defined in `conftest.py` or another project module. The following example uses the
+`ProjectContext` model defined above:
+
+```python
+from pytest_run_context import RunContext, with_run_context
+
+
+@with_run_context(ProjectContext)
+def prepare_environment(
+    context: RunContext[ProjectContext],
+    environment: str,
+) -> str:
+    context.custom.environment = environment
+    return context.info.run_id
+
+
+# Call from a fixture or another function during the active pytest session:
+# run_id = prepare_environment("stage")
+```
+
+The decorator supplies the first argument; callers supply only the remaining arguments.
+Their types and the return type are preserved for static analysis. `ProjectContext` is the
+expected custom model, not a second configuration: each call checks
+`isinstance(context.custom, ProjectContext)`, allowing subclasses, and raises `TypeError`
+on a mismatch. Invalid model classes are rejected when the decorator is constructed.
+
+Each call resolves the same active instance exposed by `get_run_context()` and the
+`run_context` fixture. Mutations are immediately visible in memory; call `context.save()`
+explicitly to persist them. The decorator does not create, save, or finish contexts.
+
+Helpers can be decorated at module import time, but called only after the plugin activates
+the context in `pytest_sessionstart()` and before it deactivates it during teardown.
+Calling from `pytest_configure()` is too early. Without an active context, the accessor's
+`RuntimeError` propagates. Creating a standalone context with `RunContext.create()` does not
+activate it for the decorator.
+
+The supported contract is ordinary synchronous helper functions. Call these helpers from
+pytest tests, fixtures, or hooks when the context is active; direct decoration of pytest
+tests, fixtures, hooks, instance methods, and async functions is outside this contract.
+The decorator does not propagate context to new threads or processes. With xdist it uses
+the existing context instance in the calling process.
 
 ## Creating and loading outside pytest
 

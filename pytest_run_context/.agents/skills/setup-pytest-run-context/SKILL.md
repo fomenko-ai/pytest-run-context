@@ -66,6 +66,19 @@ once from `pytest_configure`.
 Present any material lifecycle or storage choice and its consequences before editing. Preserve
 unrelated hooks and configuration, and make repeated application idempotent.
 
+## Helpers during the active session
+
+When the installed public API includes with_run_context (introduced in 0.2.0), use
+@with_run_context(ProjectContext) on synchronous helpers that need the active context. Give the
+helper a first argument context: RunContext[ProjectContext] and access context.custom fields
+directly. A fixture in conftest.py calls the helper without passing that argument. Do not add a
+helper unless the integration actually needs one.
+
+Tests keep the run_context fixture. Do not decorate tests, fixtures, or pytest hooks themselves.
+Call helpers only after context activation in pytest_sessionstart(), never from pytest_configure()
+or module import. Keep explicit contexts for standalone workflows. The decorator validates the
+custom model; preserve business and optional-field checks and explicit save() boundaries.
+
 ## Verify
 
 Run the narrowest collection or test command first, then the project's relevant quality checks.

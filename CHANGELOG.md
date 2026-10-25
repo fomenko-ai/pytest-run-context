@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning while the public API is still in `0.x`.
 
+## [0.2.0] - 2026-10-25
+
+### Added
+
+- Added `with_run_context(ProjectContext)` for synchronous helper functions. It injects the
+  active context as the first argument, checks the expected custom model (including subclasses),
+  and preserves static typing for the remaining arguments and return value.
+- Added a conditional `typing-extensions` runtime dependency for Python 3.9 decorator typing;
+  Python 3.10+ uses standard-library `typing`.
+- Added the packaged `refactor-to-with-run-context` skill to migrate helpers to typed context
+  injection while preserving field validation and explicit persistence.
+- Added decorated helper calls from session fixtures in all six example `conftest.py` files.
+
+### Changed
+
+- Updated the four existing agent skills to use the decorator for synchronous helpers during
+  active pytest sessions, retaining fixture-based context access in tests.
+
 ## [0.1.0] - 2026-10-11
 
 ### Added

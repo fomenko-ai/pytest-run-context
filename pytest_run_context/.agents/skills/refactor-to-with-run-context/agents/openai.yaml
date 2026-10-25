@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactor context helpers"
+  short_description: "Use typed context injection in helper functions"
+  default_prompt: "Use $refactor-to-with-run-context to migrate our helpers to typed context injection while keeping tests on fixtures."

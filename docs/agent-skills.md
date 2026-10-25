@@ -1,6 +1,6 @@
 # Agent Skills
 
-`pytest-run-context` ships four skills for AI coding agents. They provide version-aware workflows
+`pytest-run-context` ships five skills for AI coding agents. They provide version-aware workflows
 for integrating the library into a consuming project:
 
 - [`setup-pytest-run-context`](../pytest_run_context/.agents/skills/setup-pytest-run-context/SKILL.md)
@@ -11,7 +11,15 @@ for integrating the library into a consuming project:
   passes explicitly approved metadata to an existing reporting system without turning the plugin
   into a reporting framework;
 - [`migrate-to-pytest-run-context`](../pytest_run_context/.agents/skills/migrate-to-pytest-run-context/SKILL.md)
-  maps and replaces a project's legacy run-context implementation.
+  maps and replaces a project's legacy run-context implementation;
+- [`refactor-to-with-run-context`](../pytest_run_context/.agents/skills/refactor-to-with-run-context/SKILL.md)
+  converts existing synchronous helpers to typed decorator injection, removing redundant context
+  checks while preserving field validation, explicit saves, and fixture-based access in tests.
+
+For version 0.2.0 and later, all skills prefer `with_run_context(ProjectContext)` for suitable
+helpers called during an active pytest session. Tests keep the `run_context` fixture; hooks and
+fixtures call decorated helpers instead of being decorated themselves. Standalone workflows
+continue passing their explicitly created or loaded contexts.
 
 The skills are packaged with the library so their instructions stay aligned with the installed
 version of `pytest-run-context`.

@@ -17,6 +17,7 @@ EXPECTED_REFERENCES = {
         "migration-checklist.md",
     },
     "setup-pytest-run-context": {"lifecycle.md", "storage-selection.md"},
+    "refactor-to-with-run-context": set(),
 }
 REQUIRED_CLARIFICATION_RULE = """Before making any changes, analyze the user's request and the \
 existing project configuration.
@@ -40,6 +41,7 @@ PUBLIC_API_NAMES = {
     "RunInfo",
     "configure",
     "get_run_context",
+    "with_run_context",
 }
 PUBLIC_STORAGE_NAMES = {
     "JSONStorage",

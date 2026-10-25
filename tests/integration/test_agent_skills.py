@@ -15,6 +15,7 @@ EXPECTED_SKILLS = {
     "integrate-run-context-reporting",
     "migrate-to-pytest-run-context",
     "setup-pytest-run-context",
+    "refactor-to-with-run-context",
 }
 
 

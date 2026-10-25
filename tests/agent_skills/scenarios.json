@@ -46,5 +46,17 @@
     "ambiguous": true,
     "prompt": "Replace our old context implementation with pytest-run-context.",
     "expected_behavior": "Inventory behavior first and ask for decisions about unsupported or materially different behavior before changing files."
+  },
+  {
+    "skill": "refactor-to-with-run-context",
+    "ambiguous": false,
+    "prompt": "We use pytest-run-context 0.2.0. Refactor synchronous helpers called from conftest fixtures to with_run_context(ProjectContext), removing redundant accessor and type checks. Keep tests on fixtures and existing save calls in place.",
+    "expected_behavior": "Trace callers and the configured model, inject RunContext[ProjectContext] first, remove equivalent model checks and casts, preserve checks on optional fields and business state, and verify argument typing, active-context identity, and unchanged persistence. Do not decorate tests, hooks, or fixtures."
+  },
+  {
+    "skill": "refactor-to-with-run-context",
+    "ambiguous": true,
+    "prompt": "Use the decorator everywhere. Some helpers accept explicit contexts from external preparation, and others return fallback values when no pytest session is active.",
+    "expected_behavior": "Inspect the call graph, retain explicit-context and intentional fallback paths, explain that injection requires an active session, and ask which behavioral changes are intended before converting incompatible helpers. Do not remove field validation or move save calls."
   }
 ]

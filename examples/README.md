@@ -17,3 +17,9 @@ ownership can be understood independently:
 - [`external_preparation/`](external_preparation/README.md) shows a multi-process
   workflow in which an external orchestrator owns the context lifecycle while
   pytest loads and updates that context.
+
+Every example's `conftest.py` includes a synchronous helper decorated with
+`@with_run_context(ProjectContext)`, called from a session-scoped autouse fixture
+after context activation. Tests use the ordinary `run_context` fixture. The storage
+and standalone examples initialize a message; external preparation validates the
+loaded environment without changing it.

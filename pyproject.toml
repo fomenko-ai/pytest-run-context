@@ -4,11 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pytest-run-context"
-version = "0.1.0"
+version = "0.2.0"
 description = "Share and persist a typed run context across a pytest session."
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["pytest>=7.0.0", "pydantic>=2"]
+dependencies = [
+  "pytest>=7.0.0",
+  "pydantic>=2",
+  "typing-extensions>=4.10; python_version < '3.10'",
+]
 authors = [
   { name = "Aleksei Fomenko", email = "fomenko_ai@proton.me" },
 ]

@@ -59,6 +59,20 @@ Do not force reporting, outcome collection, automatic per-test saves, merge sema
 work, or secret storage into `pytest-run-context`; keep such behavior in its existing owning layer
 unless the user separately approves redesign.
 
+## Migrate helper access
+
+If the installed API includes with_run_context (0.2.0 onward), migrate eligible synchronous
+helpers to @with_run_context(ProjectContext) with context: RunContext[ProjectContext] first.
+Use the existing project model and access its fields directly through context.custom. Update all
+callers to omit the injected argument, removing only casts and checks covered by the decorator's
+active-context lookup and isinstance validation. Preserve stronger subtype checks, optional-field
+validation, error contracts, intentional no-context fallbacks, and save() timing.
+
+Tests continue using the run_context fixture. Do not decorate tests, fixtures, hooks, methods, or
+async functions; fixtures and hooks call ordinary decorated helpers after context activation.
+Keep explicit arguments for standalone preparation/cleanup and helpers used outside active pytest
+sessions. Do not silently upgrade dependencies or migrate those paths onto the active registry.
+
 ## Plan and obtain approval
 
 Read [references/migration-checklist.md](references/migration-checklist.md). Propose the smallest

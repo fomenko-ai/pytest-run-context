@@ -6,7 +6,7 @@ description: Pass pytest-run-context metadata into an existing test reporting sy
 # Integrate run context with reporting
 
 Bridge selected run metadata into reporting infrastructure already owned by the target project.
-`pytest-run-context` 0.1.0 has no native reporting integration and does not collect test outcomes.
+`pytest-run-context` has no native reporting integration and does not collect test outcomes.
 
 ## Clarification before changes
 
@@ -52,9 +52,17 @@ the implementation, ask before editing.
 Read [references/reporting-patterns.md](references/reporting-patterns.md) for reporter-specific
 boundaries and validation.
 
-Obtain context only through the public `run_context` fixture or `get_run_context()` during the
-active session. Select an explicit allowlist of fields. Prefer stable identifiers and small scalar
-values; do not serialize the complete custom model into reports.
+For version 0.2.0 or later, use `@with_run_context(ProjectContext)` on synchronous reporting
+helpers called during the active session, with `context: RunContext[ProjectContext]` first.
+Read the real model fields directly and select an explicit allowlist. Prefer stable identifiers
+and small scalar values; do not serialize the complete custom model into reports.
+
+Tests keep the `run_context` fixture. Reporter hooks and fixtures call helpers; do not decorate
+tests, hooks, or fixtures themselves. Calls must occur after activation in pytest_sessionstart()
+and before deactivation; decoration does not make pytest_configure() or late reporting hooks safe.
+Verify the installed public API before using the decorator. Older versions may use the public
+accessor or fixture. External reporting after pytest teardown must use an explicitly loaded context.
+Keep optional-field and disclosure checks even when redundant model casts/checks are removed.
 
 Use the installed reporting plugin's documented public mechanism. Keep the bridge in the consuming
 project and preserve existing reporter configuration, hooks, markers, and command-line options.

@@ -5,7 +5,7 @@ assignment validation and forbidden extra fields.
 
 Define only non-secret metadata with a current project requirement. Prefer explicit types and
 `Field(default_factory=...)` for mutable defaults. Required fields without defaults prevent the
-plugin from creating a new context because version 0.1.0 constructs the model with no arguments.
+plugin from creating a new context because versions 0.1.0 and 0.2.0 construct the model with no arguments.
 
 ```python
 from pydantic import Field

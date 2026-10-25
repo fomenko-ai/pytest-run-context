@@ -42,7 +42,7 @@ crossing a process boundary, or implementing standalone create/load/finish steps
 
 ## Configure once
 
-For version 0.1.0, configure the already auto-loaded plugin from the project's root hook:
+For versions 0.1.0 and 0.2.0, configure the already auto-loaded plugin from the project's root hook:
 
 ```python
 from pytest_run_context import BaseCustomContext, configure
@@ -67,19 +67,36 @@ real architecture decisions. `configure()` rejects repeated calls and requires a
 
 ## Use the shared context
 
-Inside tests and fixtures, request the session-scoped `run_context` fixture. Code running within
-the active pytest context can call the public `get_run_context()` accessor. These expose the same
-instance in one process:
+Inside tests, request the session-scoped `run_context` fixture. For synchronous helpers on version
+0.2.0 or later, use `with_run_context(ProjectContext)` with the configured model and a first
+argument typed as `RunContext[ProjectContext]`. Fixtures and hooks call these helpers normally;
+do not decorate tests, fixtures, or hooks with `with_run_context`.
+
+Using the ProjectContext defined above, a helper and its conftest.py caller can be written as:
 
 ```python
-from pytest_run_context import get_run_context
+import pytest
+
+from pytest_run_context import RunContext, with_run_context
 
 
-def test_service(run_context) -> None:
-    run_context.custom.environment = "staging"
-    assert get_run_context() is run_context
-    run_context.save()
+@with_run_context(ProjectContext)
+def set_environment(context: RunContext[ProjectContext], environment: str) -> None:
+    context.custom.environment = environment
+    context.save()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def prepare_environment() -> None:
+    set_environment("staging")
 ```
+
+Only use autouse preparation and a save here when the project requires those actions. Decoration
+is safe at import time; calls require activation in pytest_sessionstart(). pytest_configure() is
+too early. The decorator checks the expected model and injects the same instance as the fixture
+and accessor. Remove redundant casts and equivalent model checks, but keep field and business
+validation. Older versions can use get_run_context(); do not silently upgrade or invent an API.
+Standalone create/load workflows continue passing their contexts explicitly.
 
 Assignment is validated by Pydantic. An in-memory mutation is immediately visible through that
 same instance, but `save()` is required when the snapshot must be persisted. Do not mutate
